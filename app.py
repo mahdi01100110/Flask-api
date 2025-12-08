@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from recommendor import recommend  # تابع توصیه‌گر
+from MovieRecommendor import recommend  # تابع توصیه‌گر
 
 app = Flask(__name__)
 
