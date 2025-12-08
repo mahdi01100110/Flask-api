@@ -135,3 +135,5 @@ def recommend(title, num_recommendations=10):
     movie_indices = [i[0] for i in sim_scores]
 
     return movies['title'].iloc[movie_indices].tolist()
+
+recommend("toy story (1995)")
