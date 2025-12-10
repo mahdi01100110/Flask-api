@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
 from MovieRecommendor import recommend  # تابع توصیه‌گر
+from flask_cors import CORS
+
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def home():
