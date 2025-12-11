@@ -9,6 +9,9 @@ def find_closest_title(user_input, titles):
     best_match = process.extractOne(user_input, titles)
     return best_match[0] if best_match else None
 
+def find_similar_titles(user_input, titles, limit=5):
+    matches = process.extract(user_input, titles, limit=limit)
+    return [m[0] for m in matches]
 
 app = Flask(__name__)
 CORS(app)
@@ -28,10 +31,13 @@ def recommend_api():
     # مرحله 1: پیدا کردن نزدیک ترین عنوان
     closest_title = find_closest_title(title, movie_titles)
 
+    similar_titles = find_similar_titles(title, movie_titles, limit=5)
+
     if not closest_title:
         return jsonify({
             "input_movie": title,
             "matched_title": None,
+            "similar_titles": similar_titles,
             "recommendations": []
         })
 
@@ -48,6 +54,7 @@ def recommend_api():
         return jsonify({
             "input_movie": title,
             "matched_title": closest_title,
+            "similar_titles": similar_titles,
             "recommendations": result
         })
 
