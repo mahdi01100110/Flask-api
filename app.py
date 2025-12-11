@@ -29,9 +29,8 @@ def recommend_api():
         return jsonify({"error": "title parameter is required"}), 400
 
     # مرحله 1: پیدا کردن نزدیک ترین عنوان
-    closest_title = find_closest_title(title, movie_titles)
-
-    similar_titles = find_similar_titles(title, movie_titles, limit=5)
+    similar_titles = find_similar_titles(title, movie_titles)
+    closest_title = similar_titles[0] if similar_titles else None
 
     if not closest_title:
         return jsonify({
