@@ -1,6 +1,13 @@
 from flask import Flask, request, jsonify
-from MovieRecommendor import recommend  # تابع توصیه‌گر
+from MovieRecommendor import recommend,movie_titles  # تابع توصیه‌گر
 from flask_cors import CORS
+from fuzzywuzzy import process
+
+
+
+def find_closest_title(user_input, titles):
+    best_match = process.extractOne(user_input, titles)
+    return best_match[0] if best_match else None
 
 
 app = Flask(__name__)
@@ -10,6 +17,7 @@ CORS(app)
 def home():
     return "Movie Recommendation API is running!"
 
+
 @app.route('/recommend', methods=['GET'])
 def recommend_api():
     title = request.args.get('title')
@@ -17,10 +25,21 @@ def recommend_api():
     if not title:
         return jsonify({"error": "title parameter is required"}), 400
 
-    try:
-        result = recommend(title)
+    # مرحله 1: پیدا کردن نزدیک ترین عنوان
+    closest_title = find_closest_title(title, movie_titles)
 
-        # تبدیل مطمئن به لیست
+    if not closest_title:
+        return jsonify({
+            "input_movie": title,
+            "matched_title": None,
+            "recommendations": []
+        })
+
+    try:
+        # مرحله 2: گرفتن پیشنهاد بر اساس عنوان تصحیح‌شده
+        result = recommend(closest_title)
+
+        # مرحله 3: تبدیل به لیست
         try:
             result = list(result)
         except:
@@ -28,11 +47,13 @@ def recommend_api():
 
         return jsonify({
             "input_movie": title,
+            "matched_title": closest_title,
             "recommendations": result
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == '__main__':

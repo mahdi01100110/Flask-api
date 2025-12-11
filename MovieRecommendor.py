@@ -136,4 +136,5 @@ def recommend(title, num_recommendations=10):
 
     return movies['title'].iloc[movie_indices].tolist()
 
-recommend("toy story (1995)")
+
+movie_titles = movies['title'].tolist()
