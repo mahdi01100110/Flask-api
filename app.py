@@ -3,7 +3,7 @@ from MovieRecommendor import recommend,movie_titles  # تابع توصیه‌گ�
 from flask_cors import CORS
 from fuzzywuzzy import process
 from GetPoster import get_movie_poster
-
+from TMDBrequest import search_tmdb_movie
 
 def find_closest_title(user_input, titles):
     best_match = process.extractOne(user_input, titles)
@@ -20,6 +20,14 @@ CORS(app)
 def home():
     return "Movie Recommendation API is running!"
 
+@app.route("/tmdb-test")
+def tmdb_test():
+    title = request.args.get("title")
+    if not title:
+        return jsonify({"error": "title is required"}), 400
+
+    movies = search_tmdb_movie(title)
+    return jsonify(movies)
 
 @app.route('/recommend', methods=['GET'])
 def recommend_api():
