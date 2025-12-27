@@ -1,70 +1,107 @@
 from flask import Flask, request, jsonify
-from MovieRecommendor import recommend,movie_titles  # تابع توصیه‌گر
 from flask_cors import CORS
 from fuzzywuzzy import process
+import re
+
+from MovieRecommendor import recommend, movie_titles
 from TMDBrequest import search_tmdb_movie
 
-def find_closest_title(user_input, titles):
-    best_match = process.extractOne(user_input, titles)
-    return best_match[0] if best_match else None
+# -------------------------
+# helpers
+# -------------------------
 
-def find_similar_titles(user_input, titles, limit=5):
-    matches = process.extract(user_input, titles, limit=limit)
-    return [m[0] for m in matches]
+FUZZY_THRESHOLD = 80
+
+
+def normalize_title(title: str) -> str:
+    """
+    پاک‌سازی عنوان دیتاست برای ارسال به TMDB
+    مثال:
+    'Magnificent Seven, The (1954)' -> 'The Magnificent Seven'
+    """
+    title = re.sub(r"\(\d{4}\)", "", title)  # remove year
+    if ", The" in title:
+        title = "The " + title.replace(", The", "")
+    return title.strip()
+
+
+def fuzzy_match(user_input, titles, limit=5):
+    """
+    خروجی:
+    [(title, score), ...]
+    """
+    return process.extract(user_input, titles, limit=limit)
+
+
+# -------------------------
+# flask app
+# -------------------------
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/')
+
+@app.route("/")
 def home():
     return "Movie Recommendation API is running!"
 
 
-@app.route('/recommend', methods=['GET'])
+@app.route("/recommend", methods=["GET"])
 def recommend_api():
-    title = request.args.get('title')
+    user_title = request.args.get("title", "").strip()
 
-    if not title:
+    if not user_title:
         return jsonify({"error": "title parameter is required"}), 400
 
-    # 1. fuzzy match
-    similar_titles = find_similar_titles(title, movie_titles)
-    closest_title = similar_titles[0] if similar_titles else None
+    # 1. fuzzy matching روی دیتاست
+    matches = fuzzy_match(user_title, movie_titles)
 
-    if not closest_title:
+    if not matches:
+        # دیتاست کاملاً خالی یا خطا
         return jsonify({
-            "input_movie": title,
-            "matched_title": None,
-            "similar_titles": [],
-            "recommendations": []
+            "source": "tmdb",
+            "results": search_tmdb_movie(user_title)
+        })
+
+    closest_title, score = matches[0]
+
+    # 2. اگر شباهت کم بود → مستقیم TMDB
+    if score < FUZZY_THRESHOLD:
+        return jsonify({
+            "source": "tmdb",
+            "results": search_tmdb_movie(user_title)
         })
 
     try:
-        # 2. ML recommender
+        # 3. ML recommender
         recommended_titles = recommend(closest_title)
 
-        # 3. enrich with TMDB
         recommendations = []
-        for movie_title in recommended_titles:
-            tmdb_data = search_tmdb_movie(movie_title)
 
-            if tmdb_data:
+        for raw_title in recommended_titles:
+            clean_title = normalize_title(raw_title)
+            tmdb_results = search_tmdb_movie(clean_title)
+
+            if tmdb_results:
+                movie = tmdb_results[0]
                 recommendations.append({
-                    "title": tmdb_data[0].get("title", movie_title),
-                    "poster": tmdb_data[0].get("poster"),
-                    "rating": tmdb_data[0].get("rating")
+                    "title": movie.get("title", clean_title),
+                    "poster": movie.get("poster"),
+                    "rating": movie.get("rating")
                 })
             else:
                 recommendations.append({
-                    "title": movie_title,
+                    "title": clean_title,
                     "poster": None,
                     "rating": None
                 })
 
         return jsonify({
-            "input_movie": title,
+            "source": "ml+tmdb",
+            "input_movie": user_title,
             "matched_title": closest_title,
-            "similar_titles": similar_titles,
+            "match_score": score,
+            "similar_titles": [m[0] for m in matches],
             "recommendations": recommendations
         })
 
@@ -72,6 +109,9 @@ def recommend_api():
         return jsonify({"error": str(e)}), 500
 
 
+# -------------------------
+# run
+# -------------------------
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
