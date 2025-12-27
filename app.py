@@ -20,14 +20,6 @@ CORS(app)
 def home():
     return "Movie Recommendation API is running!"
 
-@app.route("/tmdb-test")
-def tmdb_test():
-    title = request.args.get("title")
-    if not title:
-        return jsonify({"error": "title is required"}), 400
-
-    movies = search_tmdb_movie(title)
-    return jsonify(movies)
 
 @app.route('/recommend', methods=['GET'])
 def recommend_api():
@@ -36,6 +28,7 @@ def recommend_api():
     if not title:
         return jsonify({"error": "title parameter is required"}), 400
 
+    # 1. fuzzy match
     similar_titles = find_similar_titles(title, movie_titles)
     closest_title = similar_titles[0] if similar_titles else None
 
@@ -43,19 +36,31 @@ def recommend_api():
         return jsonify({
             "input_movie": title,
             "matched_title": None,
-            "similar_titles": similar_titles,
+            "similar_titles": [],
             "recommendations": []
         })
 
     try:
+        # 2. ML recommender
         recommended_titles = recommend(closest_title)
 
+        # 3. enrich with TMDB
         recommendations = []
-        for movie in recommended_titles:
-            recommendations.append({
-                "title": movie,
-                "poster": get_movie_poster(movie)
-            })
+        for movie_title in recommended_titles:
+            tmdb_data = search_tmdb_movie(movie_title)
+
+            if tmdb_data:
+                recommendations.append({
+                    "title": tmdb_data[0].get("title", movie_title),
+                    "poster": tmdb_data[0].get("poster"),
+                    "rating": tmdb_data[0].get("rating")
+                })
+            else:
+                recommendations.append({
+                    "title": movie_title,
+                    "poster": None,
+                    "rating": None
+                })
 
         return jsonify({
             "input_movie": title,
