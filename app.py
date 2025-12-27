@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from MovieRecommendor import recommend,movie_titles  # تابع توصیه‌گر
 from flask_cors import CORS
 from fuzzywuzzy import process
-from GetPoster import get_movie_poster
 from TMDBrequest import search_tmdb_movie
 
 def find_closest_title(user_input, titles):
