@@ -20,7 +20,7 @@ def search_tmdb_movie(title):
         results.append({
             "title": movie["title"],
             "poster": f"https://image.tmdb.org/t/p/w500{movie['poster_path']}"
-                      if movie.get("poster_path") else None
+                        if movie.get("poster_path") else None
         })
 
     return results
