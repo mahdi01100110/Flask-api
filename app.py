@@ -45,6 +45,19 @@ CORS(app)
 def home():
     return "Movie Recommendation API is running!"
 
+@app.route("/autocomplete")
+def autocomplete():
+    q = request.args.get("query", "").lower()
+
+    if len(q) < 2:
+        return jsonify({"results": []})
+
+    matches = [
+        t for t in movie_titles
+        if q in t.lower()
+    ][:7]
+
+    return jsonify({"results": matches})
 
 @app.route("/recommend", methods=["GET"])
 def recommend_api():
